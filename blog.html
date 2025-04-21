@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog | LUC1F3R</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Override matrix canvas styles to make it more visible */
+        #matrix-canvas {
+            opacity: 0.35 !important; 
+            z-index: 0 !important;
+        }
+        
+        /* Hide the scan line */
+        .scan-line {
+            display: none !important;
+        }
+        
+        /* Terminal header and status bar */
+        .terminal-header-bar {
+            background-color: rgba(0, 10, 0, 0.9);
+            border-bottom: 1px solid var(--primary-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 2rem;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            font-size: 0.8rem;
+            color: var(--primary-color);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
+        }
+        
+        .terminal-header-bar::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                rgba(0, 255, 0, 0.1) 0%, 
+                transparent 5%,
+                transparent 95%,
+                rgba(0, 255, 0, 0.1) 100%
+            );
+            pointer-events: none;
+        }
+        
+        .term-status {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .term-clock {
+            display: flex;
+            align-items: center;
+        }
+        
+        .term-clock .clock-item {
+            margin-left: 1rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .term-clock .clock-item i {
+            margin-right: 0.5rem;
+            font-size: 0.8rem;
+        }
+        
+        .system-indicator {
+            border: 1px solid rgba(0, 255, 0, 0.3);
+            padding: 0.15rem 0.5rem;
+            border-radius: 3px;
+            background-color: rgba(0, 20, 0, 0.3);
+        }
+        
+        .ping-value {
+            color: #ffbd44;
+        }
+        
+        .secure-badge {
+            background-color: rgba(0, 40, 0, 0.6);
+            padding: 0.15rem 0.5rem;
+            border-radius: 3px;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            font-weight: bold;
+        }
+        
+        .secure-badge i {
+            margin-right: 0.35rem;
+        }
+        
+        /* Navigation bar with bracketed numbers */
+        .menu-numbers {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .menu-numbers a {
+            color: var(--text-color);
+            text-decoration: none;
+            position: relative;
+            transition: color 0.3s ease;
+        }
+        
+        .menu-numbers a:hover, 
+        .menu-numbers a.active {
+            color: var(--primary-color);
+            text-shadow: var(--primary-glow);
+        }
+        
+        .logo-terminal {
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--primary-color);
+            text-shadow: var(--primary-glow);
+        }
+        
+        /* Blog styles */
+        .blog-section {
+            background-color: rgba(10, 15, 10, 0.8);
+            border: 1px solid var(--primary-color);
+            border-radius: 5px;
+            box-shadow: var(--primary-glow), inset 0 0 20px rgba(0, 255, 0, 0.2);
+            margin: 1rem auto;
+            max-width: 900px;
+            position: relative;
+            overflow: hidden;
+            padding: 1.5rem 2rem;
+        }
+        
+        .section-title {
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .section-title::before,
+        .section-title::after {
+            content: '';
+            height: 1px;
+            background-color: var(--primary-color);
+            box-shadow: var(--primary-glow);
+            flex: 1;
+        }
+        
+        .section-title::before {
+            margin-right: 1rem;
+        }
+        
+        .section-title::after {
+            margin-left: 1rem;
+        }
+        
+        .blog-posts {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+        
+        .blog-post {
+            background-color: rgba(5, 10, 5, 0.6);
+            border: 1px solid var(--primary-color);
+            box-shadow: var(--primary-glow);
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .blog-post:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 7px 15px rgba(0, 255, 0, 0.15), 0 0 5px rgba(0, 255, 0, 0.3);
+        }
+        
+        .blog-image {
+            position: relative;
+            overflow: hidden;
+            height: 180px;
+        }
+        
+        .blog-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: grayscale(20%) contrast(1.1);
+            transition: transform 0.5s ease;
+        }
+        
+        .blog-post:hover .blog-image img {
+            transform: scale(1.05);
+        }
+        
+        .blog-image::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom,
+                transparent 70%,
+                rgba(5, 10, 5, 0.8) 100%);
+            pointer-events: none;
+        }
+        
+        .blog-content {
+            padding: 1.5rem;
+        }
+        
+        .blog-date {
+            display: inline-block;
+            font-size: 0.8rem;
+            color: var(--secondary-color);
+            margin-bottom: 0.5rem;
+            padding: 0.1rem 0.5rem;
+            border-left: 2px solid var(--secondary-color);
+        }
+        
+        .blog-title {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+            line-height: 1.3;
+        }
+        
+        .blog-excerpt {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+            color: var(--text-color);
+        }
+        
+        .blog-link {
+            display: inline-flex;
+            align-items: center;
+            color: var(--primary-color);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.3s ease;
+        }
+        
+        .blog-link i {
+            margin-left: 0.5rem;
+            transition: transform 0.3s ease;
+        }
+        
+        .blog-link:hover {
+            color: var(--secondary-color);
+        }
+        
+        .blog-link:hover i {
+            transform: translateX(3px);
+        }
+        
+        .featured-post {
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .featured-image {
+            flex: 0 0 40%;
+            position: relative;
+            overflow: hidden;
+            height: auto;
+        }
+        
+        .featured-content {
+            flex: 1;
+            padding: 1.5rem;
+            background-color: rgba(5, 10, 5, 0.6);
+            border: 1px solid var(--primary-color);
+            box-shadow: var(--primary-glow);
+        }
+        
+        .featured-tag {
+            display: inline-block;
+            background-color: rgba(0, 255, 0, 0.1);
+            border: 1px solid var(--primary-color);
+            padding: 0.3rem 0.7rem;
+            font-size: 0.8rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+        
+        .featured-title {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+            line-height: 1.3;
+        }
+        
+        .categories {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .category-btn {
+            padding: 0.3rem 0.8rem;
+            background-color: rgba(0, 30, 0, 0.5);
+            border: 1px solid var(--primary-color);
+            color: var(--text-color);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .category-btn:hover,
+        .category-btn.active {
+            background-color: rgba(0, 255, 0, 0.1);
+            color: var(--primary-color);
+            box-shadow: var(--primary-glow);
+        }
+        
+        /* Container and general layout */
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 15px;
+        }
+        
+        .hero {
+            padding-top: 70px;
+            min-height: unset;
+        }
+        
+        /* Footer styles */
+        footer {
+            margin-top: auto;
+            padding: 20px 0;
+            background-color: rgba(0, 10, 0, 0.8);
+            border-top: 1px solid var(--primary-color);
+            text-align: center;
+        }
+        
+        .social-icons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .social-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            font-size: 1.2rem;
+        }
+        
+        .social-icon:hover {
+            background-color: rgba(0, 255, 0, 0.1);
+            box-shadow: var(--primary-glow);
+            transform: translateY(-3px);
+        }
+        
+        footer p {
+            color: var(--text-color);
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 2rem;
+            gap: 0.5rem;
+        }
+        
+        .page-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background-color: rgba(5, 10, 5, 0.6);
+            border: 1px solid var(--primary-color);
+            color: var(--text-color);
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .page-link:hover,
+        .page-link.active {
+            background-color: rgba(0, 255, 0, 0.1);
+            color: var(--primary-color);
+            box-shadow: var(--primary-glow);
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 992px) {
+            .featured-post {
+                flex-direction: column;
+            }
+            
+            .featured-image {
+                height: 250px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .terminal-header-bar {
+                flex-direction: column;
+                gap: 0.5rem;
+                padding: 0.5rem;
+            }
+            
+            .term-status, .term-clock {
+                width: 100%;
+                justify-content: space-between;
+            }
+            
+            .menu-numbers {
+                overflow-x: auto;
+                white-space: nowrap;
+                padding-bottom: 5px;
+                justify-content: flex-start;
+                gap: 0.8rem;
+            }
+            
+            .hero {
+                padding-top: 90px;
+            }
+            
+            .blog-posts {
+                grid-template-columns: 1fr;
+            }
+            
+            .featured-title {
+                font-size: 1.5rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .terminal-header-bar {
+                padding: 0.5rem;
+            }
+            
+            .term-status {
+                justify-content: space-between;
+                width: 100%;
+                gap: 0.5rem;
+            }
+            
+            .term-clock {
+                justify-content: space-between;
+                width: 100%;
+            }
+            
+            .blog-section {
+                padding: 1rem;
+            }
+            
+            .ping-indicator {
+                display: none;
+            }
+            
+            .logo-terminal {
+                font-size: 1rem;
+            }
+            
+            .secure-badge {
+                font-size: 0.7rem;
+                padding: 0.1rem 0.3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="matrix-canvas"></canvas>
+    <div class="terminal-noise"></div>
+    
+    <div class="container">
+        <div class="terminal-header-bar">
+            <div class="term-status">
+                <div class="logo-terminal">LUC1F3R</div>
+                <div class="ping-indicator">
+                    <i class="fas fa-signal"></i> ping: <span class="ping-value">13ms</span>
+                </div>
+                <div class="secure-badge">
+                    <i class="fas fa-lock"></i> SECURE
+                </div>
+            </div>
+            <div class="term-clock">
+                <div class="menu-numbers">
+                    <a href="index.html">[0] Home</a>
+                    <a href="about.html">[1] About</a>
+                    <a href="blog.html" class="active">[2] Blog</a>
+                    <a href="portfolio.html">[3] Portfolio</a>
+                    <a href="contact.html">[4] Contact</a>
+                </div>
+                <div class="clock-item">
+                    <i class="far fa-clock"></i>
+                    <span id="system-time">15:57:18</span>
+                </div>
+            </div>
+        </div>
+        
+        <main class="hero">
+            <div class="system-message">[SYSTEM]: Loading blog entries... Access granted.</div>
+            
+            <div class="blog-section">
+                <div class="section-title">
+                    <span>< cybersecurity_blog ></span>
+                </div>
+                
+                <div class="categories">
+                    <button class="category-btn active">All</button>
+                    <button class="category-btn">Penetration Testing</button>
+                    <button class="category-btn">Web Security</button>
+                    <button class="category-btn">Network Security</button>
+                    <button class="category-btn">CTF Writeups</button>
+                    <button class="category-btn">Tutorials</button>
+                </div>
+                
+                <div class="featured-post">
+                    <div class="featured-image">
+                        <img src="assets/images/blog/featured.jpg" alt="Zero-day vulnerability">
+                    </div>
+                    <div class="featured-content">
+                        <span class="featured-tag">FEATURED</span>
+                        <h2 class="featured-title">Discovering a Zero-Day Vulnerability in a Popular CMS</h2>
+                        <span class="blog-date">May 15, 2023</span>
+                        <p class="blog-excerpt">
+                            In this detailed write-up, I share my methodology for discovering a critical remote code execution vulnerability in a widely-used content management system. The vulnerability allowed attackers to gain unauthorized access to servers hosting the CMS. I discuss the discovery process, proof-of-concept development, responsible disclosure, and the vendor's patch response.
+                        </p>
+                        <a href="blog-single.html" class="blog-link">Read full article <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </div>
+                
+                <div class="blog-posts">
+                    <div class="blog-post">
+                        <div class="blog-image">
+                            <img src="assets/images/blog/post1.jpg" alt="SQL Injection">
+                        </div>
+                        <div class="blog-content">
+                            <span class="blog-date">April 28, 2023</span>
+                            <h3 class="blog-title">Advanced SQL Injection Techniques and Prevention</h3>
+                            <p class="blog-excerpt">
+                                SQL injection attacks continue to plague web applications. This article explores advanced SQL injection vectors and modern prevention methods.
+                            </p>
+                            <a href="blog-single.html" class="blog-link">Read more <i class="fas fa-arrow-right"></i></a>
+                        </div>
+                    </div>
+                    
+                    <div class="blog-post">
+                        <div class="blog-image">
+                            <img src="assets/images/blog/post2.jpg" alt="CTF Competition">
+                        </div>
+                        <div class="blog-content">
+                            <span class="blog-date">April 10, 2023</span>
+                            <h3 class="blog-title">Walkthrough: How I Solved the HackerOne CTF Challenge</h3>
+                            <p class="blog-excerpt">
+                                A detailed walkthrough of my approach to solving the challenging web security CTF hosted by HackerOne last month.
+                            </p>
+                            <a href="blog-single.html" class="blog-link">Read more <i class="fas fa-arrow-right"></i></a>
+                        </div>
+                    </div>
+                    
+                    <div class="blog-post">
+                        <div class="blog-image">
+                            <img src="assets/images/blog/post3.jpg" alt="API Security">
+                        </div>
+                        <div class="blog-content">
+                            <span class="blog-date">March 22, 2023</span>
+                            <h3 class="blog-title">Securing RESTful APIs: Best Practices and Common Pitfalls</h3>
+                            <p class="blog-excerpt">
+                                As APIs become central to modern applications, securing them properly is more important than ever. Learn the best practices for API security.
+                            </p>
+                            <a href="blog-single.html" class="blog-link">Read more <i class="fas fa-arrow-right"></i></a>
+                        </div>
+                    </div>
+                    
+                    <div class="blog-post">
+                        <div class="blog-image">
+                            <img src="assets/images/blog/post4.jpg" alt="Burp Suite">
+                        </div>
+                        <div class="blog-content">
+                            <span class="blog-date">March 5, 2023</span>
+                            <h3 class="blog-title">Essential Burp Suite Extensions for Web Penetration Testing</h3>
+                            <p class="blog-excerpt">
+                                Enhance your Burp Suite toolkit with these powerful extensions that can significantly streamline your web application testing workflow.
+                            </p>
+                            <a href="blog-single.html" class="blog-link">Read more <i class="fas fa-arrow-right"></i></a>
+                        </div>
+                    </div>
+                    
+                    <div class="blog-post">
+                        <div class="blog-image">
+                            <img src="assets/images/blog/post5.jpg" alt="XSS Attack">
+                        </div>
+                        <div class="blog-content">
+                            <span class="blog-date">February 18, 2023</span>
+                            <h3 class="blog-title">Beyond the Basics: Advanced XSS Attack Vectors</h3>
+                            <p class="blog-excerpt">
+                                Cross-site scripting remains a prevalent vulnerability. This post covers sophisticated XSS attacks that bypass common protection mechanisms.
+                            </p>
+                            <a href="blog-single.html" class="blog-link">Read more <i class="fas fa-arrow-right"></i></a>
+                        </div>
+                    </div>
+                    
+                    <div class="blog-post">
+                        <div class="blog-image">
+                            <img src="assets/images/blog/post6.jpg" alt="Cloud Security">
+                        </div>
+                        <div class="blog-content">
+                            <span class="blog-date">February 3, 2023</span>
+                            <h3 class="blog-title">Common Cloud Security Misconfigurations and How to Fix Them</h3>
+                            <p class="blog-excerpt">
+                                Cloud environments often suffer from misconfigurations that can lead to data breaches. Learn how to identify and remediate these issues.
+                            </p>
+                            <a href="blog-single.html" class="blog-link">Read more <i class="fas fa-arrow-right"></i></a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="pagination">
+                    <a href="#" class="page-link active">1</a>
+                    <a href="#" class="page-link">2</a>
+                    <a href="#" class="page-link">3</a>
+                    <a href="#" class="page-link"><i class="fas fa-chevron-right"></i></a>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <div class="social-icons">
+                <a href="https://github.com/indianhacker12" class="social-icon" target="_blank" rel="noopener noreferrer"><i class="fab fa-github"></i></a>
+                <a href="https://x.com/YaswantP86897" class="social-icon" target="_blank" rel="noopener noreferrer"><i class="fab fa-twitter"></i></a>
+                <a href="https://www.linkedin.com/in/yaswantpandey" class="social-icon" target="_blank" rel="noopener noreferrer"><i class="fab fa-linkedin"></i></a>
+                <a href="https://www.instagram.com/" class="social-icon" target="_blank" rel="noopener noreferrer"><i class="fab fa-instagram"></i></a>
+            </div>
+            <p>&copy; 2025 Lucifer. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script src="assets/js/matrix.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script>
+        // Live clock
+        function updateClock() {
+            const now = new Date();
+            let hours = now.getHours();
+            let minutes = now.getMinutes();
+            let seconds = now.getSeconds();
+            
+            hours = hours < 10 ? '0' + hours : hours;
+            minutes = minutes < 10 ? '0' + minutes : minutes;
+            seconds = seconds < 10 ? '0' + seconds : seconds;
+            
+            document.getElementById('system-time').textContent = `${hours}:${minutes}:${seconds}`;
+            setTimeout(updateClock, 1000);
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            updateClock();
+            
+            // Category buttons interaction
+            const categoryButtons = document.querySelectorAll('.category-btn');
+            categoryButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    categoryButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+        });
+    </script>
+</body>
+</html> 
