@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Essential Burp Suite Extensions for Web Penetration Testing | LUC1F3R</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg">
+    <link rel="shortcut icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+    <style>
+        /* Override matrix canvas styles to make it more visible */
+        #matrix-canvas {
+            opacity: 0.35 !important; 
+            z-index: 0 !important;
+        }
+        
+        /* Hide the scan line */
+        .scan-line {
+            display: none !important;
+        }
+        
+        /* Terminal header and status bar */
+        .terminal-header-bar {
+            background-color: rgba(0, 10, 0, 0.9);
+            border-bottom: 1px solid var(--primary-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 2rem;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            font-size: 0.8rem;
+            color: var(--primary-color);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
+        }
+        
+        /* Audio player styling */
+        .audio-player {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0, 30, 0, 0.7);
+            padding: 5px 10px;
+            border-radius: 4px;
+            border: 1px solid rgba(0, 255, 0, 0.3);
+        }
+        
+        .audio-player button {
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            cursor: pointer;
+            font-size: 0.8rem;
+            padding: 2px 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .audio-player button:hover {
+            text-shadow: 0 0 8px var(--primary-color);
+        }
+        
+        .audio-player .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            width: 80px;
+        }
+        
+        .audio-player .volume-slider {
+            -webkit-appearance: none;
+            width: 50px;
+            height: 3px;
+            background: rgba(0, 255, 0, 0.2);
+            outline: none;
+            border-radius: 3px;
+        }
+        
+        .audio-player .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 8px;
+            height: 8px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 5px var(--primary-color);
+        }
+        
+        .audio-player .status {
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            color: var(--secondary-color);
+        }
+        
+        /* Spacer to prevent content from being hidden under fixed header */
+        .header-spacer {
+            height: 50px;
+        }
+        
+        .terminal-header-bar::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                rgba(0, 255, 0, 0.1) 0%, 
+                transparent 5%,
+                transparent 95%,
+                rgba(0, 255, 0, 0.1) 100%
+            );
+            pointer-events: none;
+        }
+        
+        .term-status {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .term-clock {
+            display: flex;
+            align-items: center;
+        }
+        
+        .term-clock .clock-item {
+            margin-left: 1rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .term-clock .clock-item i {
+            margin-right: 0.5rem;
+            font-size: 0.8rem;
+        }
+        
+        .system-indicator {
+            border: 1px solid rgba(0, 255, 0, 0.3);
+            padding: 0.15rem 0.5rem;
+            border-radius: 3px;
+            background-color: rgba(0, 20, 0, 0.3);
+        }
+        
+        .ping-value {
+            color: #ffbd44;
+        }
+        
+        .secure-badge {
+            background-color: rgba(0, 40, 0, 0.6);
+            padding: 0.15rem 0.5rem;
+            border-radius: 3px;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            font-weight: bold;
+        }
+        
+        .secure-badge i {
+            margin-right: 0.35rem;
+        }
+        
+        /* Blog article specific styles */
+        .article-section {
+            background-color: rgba(10, 15, 10, 0.8);
+            border: 1px solid var(--primary-color);
+            border-radius: 5px;
+            box-shadow: var(--primary-glow), inset 0 0 20px rgba(0, 255, 0, 0.2);
+            margin: 1rem auto;
+            max-width: 900px;
+            position: relative;
+            overflow: hidden;
+            padding: 1.5rem 2rem;
+        }
+        
+        .article-title {
+            color: var(--primary-color);
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            text-align: center;
+            line-height: 1.3;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            color: var(--secondary-color);
+            font-size: 0.9rem;
+            border-bottom: 1px solid rgba(0, 255, 0, 0.2);
+            padding-bottom: 1rem;
+        }
+        
+        .article-meta .meta-item {
+            display: flex;
+            align-items: center;
+        }
+        
+        .article-meta .meta-item i {
+            margin-right: 0.5rem;
+        }
+        
+        .article-featured-image {
+            width: 100%;
+            max-height: 400px;
+            object-fit: cover;
+            margin-bottom: 2rem;
+            border: 1px solid var(--primary-color);
+        }
+        
+        .article-content {
+            color: var(--text-color);
+            line-height: 1.7;
+            font-size: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .article-content h2 {
+            color: var(--primary-color);
+            margin: 2rem 0 1rem;
+            font-size: 1.5rem;
+        }
+        
+        .article-content h3 {
+            color: var(--secondary-color);
+            margin: 1.5rem 0 1rem;
+            font-size: 1.3rem;
+        }
+        
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+        
+        .article-content ul, 
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+        
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+        
+        .code-block {
+            background-color: rgba(0, 10, 0, 0.7);
+            padding: 1rem;
+            margin: 1.5rem 0;
+            border-left: 3px solid var(--primary-color);
+            overflow-x: auto;
+            font-family: monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .article-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 2rem;
+        }
+        
+        .article-tag {
+            background-color: rgba(0, 30, 0, 0.5);
+            padding: 0.3rem 0.8rem;
+            border: 1px solid var(--primary-color);
+            color: var(--text-color);
+            font-size: 0.8rem;
+        }
+        
+        .article-navigation {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(0, 255, 0, 0.2);
+        }
+        
+        .nav-previous,
+        .nav-next {
+            display: flex;
+            align-items: center;
+            color: var(--secondary-color);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .nav-previous:hover,
+        .nav-next:hover {
+            color: var(--primary-color);
+        }
+        
+        .nav-previous i {
+            margin-right: 0.5rem;
+        }
+        
+        .nav-next i {
+            margin-left: 0.5rem;
+        }
+        
+        /* Extension card styles */
+        .extension-card {
+            background-color: rgba(5, 10, 5, 0.6);
+            border: 1px solid var(--primary-color);
+            border-radius: 5px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .extension-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .extension-name {
+            color: var(--primary-color);
+            font-size: 1.3rem;
+            margin: 0;
+        }
+        
+        .extension-rating {
+            display: flex;
+            gap: 0.2rem;
+            color: #ffbd44;
+        }
+        
+        .extension-desc {
+            color: var(--text-color);
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+        
+        .extension-features {
+            margin-bottom: 1.5rem;
+        }
+        
+        .extension-feature {
+            display: flex;
+            align-items: baseline;
+            margin-bottom: 0.5rem;
+        }
+        
+        .extension-feature i {
+            color: var(--primary-color);
+            margin-right: 0.5rem;
+        }
+        
+        .extension-link {
+            display: inline-flex;
+            align-items: center;
+            background-color: rgba(0, 30, 0, 0.5);
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+        
+        .extension-link:hover {
+            background-color: rgba(0, 40, 0, 0.7);
+            box-shadow: var(--primary-glow);
+        }
+        
+        .extension-link i {
+            margin-left: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="matrix-canvas"></canvas>
+    <div class="terminal-noise"></div>
+    
+    <div class="container">
+        <div class="terminal-header-bar">
+            <div class="logo-terminal">[LUC1F3R@TERMINAL]</div>
+            
+            <!-- Audio Player -->
+            <div class="audio-player">
+                <audio id="background-music" loop>
+                    <source src="assets/audio/hacker-music.mp3" type="audio/mp3">
+                    Your browser does not support the audio element.
+                </audio>
+                <button id="play-pause-btn"><i class="fas fa-play"></i></button>
+                <div class="volume-control">
+                    <i class="fas fa-volume-up"></i>
+                    <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.1" value="0.5">
+                </div>
+                <span class="status" id="audio-status">AUDIO READY</span>
+            </div>
+            
+            <div class="term-status">
+                <div class="system-indicator">SYSTEM: <span class="ping-value">READY</span></div>
+                <div class="secure-badge"><i class="fas fa-shield-alt"></i> SECURE</div>
+                <div class="term-clock">
+                    <div class="clock-item">
+                        <i class="fas fa-clock"></i>
+                        <span id="current-time">00:00:00</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="term-clock">
+                <div class="menu-numbers">
+                    <a href="index.html">[0] Home</a>
+                    <a href="about.html">[1] About</a>
+                    <a href="blog.html" class="active">[2] Blog</a>
+                    <a href="portfolio.html">[3] Portfolio</a>
+                    <a href="contact.html">[4] Contact</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="header-spacer"></div>
+        
+        <main class="hero">
+            <div class="system-message">[SYSTEM]: Loading article data... Access granted.</div>
+            
+            <div class="article-section">
+                <article id="burpsuite-article">
+                    <h1 class="article-title">Essential Burp Suite Extensions for Web Penetration Testing</h1>
+                    
+                    <div class="article-meta">
+                        <div class="meta-item">
+                            <i class="far fa-calendar"></i>
+                            <span>March 5, 2023</span>
+                        </div>
+                        <div class="meta-item">
+                            <i class="far fa-user"></i>
+                            <span>Lucifer</span>
+                        </div>
+                        <div class="meta-item">
+                            <i class="far fa-folder"></i>
+                            <span>Web Security</span>
+                        </div>
+                    </div>
+                    
+                    <img src="https://portswigger.net/cms/images/32/63/f40c-article-210303-auth-helper-body-text.png" alt="Burp Suite Extensions" class="article-featured-image">
+                    
+                    <div class="article-content">
+                        <p>
+                            Burp Suite से परिचित हर पेनटेस्टर जानता है कि यह वेब एप्लिकेशन सुरक्षा टेस्टिंग का एक शक्तिशाली टूल है। लेकिन क्या आप जानते हैं कि इसकी क्षमताओं को काफी बढ़ाया जा सकता है? Burp Suite की एक्सटेंशन क्षमताएं इसे और भी शक्तिशाली बनाती हैं। इस आर्टिकल में, मैं उन आवश्यक एक्सटेंशन के बारे में बात करूंगा जो आपके वेब पेनिट्रेशन टेस्टिंग वर्कफ्लो को नाटकीय रूप से बेहतर बना सकते हैं।
+                        </p>
+                        
+                        <p>
+                            इन एक्सटेंशन को अपने टूलकिट में जोड़कर, आप बग ढूंढने की प्रक्रिया को तेज कर सकते हैं, मैन्युअल कार्यों को स्वचालित कर सकते हैं, और अपने पेनटेस्ट प्रयासों की प्रभावशीलता को बढ़ा सकते हैं। चाहे आप एक अनुभवी सुरक्षा परीक्षक हों या फिर शुरुआती, ये एक्सटेंशन आपके काम को आसान और अधिक प्रभावी बनाएंगे।
+                        </p>
+                        
+                        <h2>1. Turbo Intruder - हाई-स्पीड सेंड रिक्वेस्ट</h2>
+                        
+                        <div class="extension-card">
+                            <div class="extension-header">
+                                <h3 class="extension-name">Turbo Intruder</h3>
+                                <div class="extension-rating">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                </div>
+                            </div>
+                            
+                            <p class="extension-desc">
+                                स्टैंडर्ड Burp Intruder का एक पावरफुल विकल्प है Turbo Intruder। यह बहुत अधिक रिक्वेस्ट प्रति सेकंड भेज सकता है, जो रेट-लिमिटिंग बायपास, रेस कंडीशन एक्सप्लॉइट, और अन्य ब्रूट-फोर्स हमलों के लिए आदर्श है।
+                            </p>
+                            
+                            <div class="extension-features">
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>10,000+ रिक्वेस्ट प्रति सेकंड की गति</span>
+                                </div>
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>Python स्क्रिप्टिंग सपोर्ट</span>
+                                </div>
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>कस्टम अटैक सीक्वेंस बनाने की क्षमता</span>
+                                </div>
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>डिजाइनर इंटरफेस के बजाय प्रोग्रामेटिक एक्सेस</span>
+                                </div>
+                            </div>
+                            
+                            <a href="https://portswigger.net/bappstore/9abaa233088242e8be252cd4ff534988" class="extension-link" target="_blank">BApp Store में देखें <i class="fas fa-external-link-alt"></i></a>
+                        </div>
+                        
+                        <h2>2. AuthMatrix - कॉम्प्लेक्स ऑथोराइजेशन टेस्टिंग</h2>
+                        
+                        <div class="extension-card">
+                            <div class="extension-header">
+                                <h3 class="extension-name">AuthMatrix</h3>
+                                <div class="extension-rating">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star-half-alt"></i>
+                                </div>
+                            </div>
+                            
+                            <p class="extension-desc">
+                                Authentication और Authorization टेस्टिंग कठिन हो सकती है, विशेष रूप से जटिल वेब एप्लिकेशन के साथ। AuthMatrix एक शक्तिशाली एक्सटेंशन है जो आपको विभिन्न रोल्स और उपयोगकर्ताओं के लिए एक्सेस कंट्रोल परीक्षण की मैट्रिक्स बनाने की अनुमति देता है।
+                            </p>
+                            
+                            <div class="extension-features">
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>विभिन्न उपयोगकर्ता रोल्स के लिए कॉन्फ़िगरेशन मैट्रिक्स</span>
+                                </div>
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>हर रिक्वेस्ट एंडपॉइंट के लिए एक्सेस कंट्रोल चेक</span>
+                                </div>
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>टेस्ट केस को सेव और रीलोड करने की क्षमता</span>
+                                </div>
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>अधिकारिता परीक्षण परिणामों का विजुअल सारांश</span>
+                                </div>
+                            </div>
+                            
+                            <a href="https://portswigger.net/bappstore/30d8ee9f40c041b0bfec67441aad158e" class="extension-link" target="_blank">BApp Store में देखें <i class="fas fa-external-link-alt"></i></a>
+                        </div>
+                        
+                        <h2>3. Active Scan++ - एडवांस्ड वल्नरेबिलिटी डिटेक्शन</h2>
+                        
+                        <div class="extension-card">
+                            <div class="extension-header">
+                                <h3 class="extension-name">Active Scan++</h3>
+                                <div class="extension-rating">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                </div>
+                            </div>
+                            
+                            <p class="extension-desc">
+                                Burp के Active Scanner को आगे बढ़ाता है और अतिरिक्त चेक जोड़ता है, जिससे आप और अधिक वल्नरेबिलिटी पा सकते हैं, जिसमें XXE, हस्ताक्षरित कुकीज का दुरुपयोग, और अन्य शामिल हैं जो स्टैंडर्ड स्कैनर से छूट सकते हैं।
+                            </p>
+                            
+                            <div class="extension-features">
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>XML External Entity (XXE) इंजेक्शन चेक</span>
+                                </div>
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>हस्ताक्षर-आधारित कुकीज़ बायपास चेक</span>
+                                </div>
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>HTTP हेडर इंजेक्शन डिटेक्शन</span>
+                                </div>
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>फ़ॉर्मेट स्ट्रिंग वल्नरेबिलिटी चेक</span>
+                                </div>
+                            </div>
+                            
+                            <a href="https://portswigger.net/bappstore/0a05afd37da44adca514acef1cdde3b9" class="extension-link" target="_blank">BApp Store में देखें <i class="fas fa-external-link-alt"></i></a>
+                        </div>
+                        
+                        <h2>4. Retire.js - क्लाइंट-साइड जावास्क्रिप्ट वल्नरेबिलिटी डिटेक्शन</h2>
+                        
+                        <div class="extension-card">
+                            <div class="extension-header">
+                                <h3 class="extension-name">Retire.js</h3>
+                                <div class="extension-rating">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="far fa-star"></i>
+                                </div>
+                            </div>
+                            
+                            <p class="extension-desc">
+                                पुराने JavaScript लाइब्रेरीज अक्सर सुरक्षा जोखिम पैदा करते हैं। Retire.js एक्सटेंशन आपके स्कैन किए गए वेब एप्लिकेशन में पाए गए वल्नरेबल JavaScript लाइब्रेरीज का पता लगाता है।
+                            </p>
+                            
+                            <div class="extension-features">
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>पुराने और वल्नरेबल JavaScript लाइब्रेरीज का स्वचालित पता लगाता है</span>
+                                </div>
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>CVE रेफरेंस और सुरक्षा सलाह प्रदान करता है</span>
+                                </div>
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>पैसिव स्कैनिंग मोड में काम करता है</span>
+                                </div>
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>मिनिफाइड कोड को भी पहचानता है</span>
+                                </div>
+                            </div>
+                            
+                            <a href="https://portswigger.net/bappstore/36238b534a78494db9bf2d03f112265c" class="extension-link" target="_blank">BApp Store में देखें <i class="fas fa-external-link-alt"></i></a>
+                        </div>
+                        
+                        <h2>5. JWT Editor - JSON वेब टोकन डीकोडिंग और मैनिपुलेशन</h2>
+                        
+                        <div class="extension-card">
+                            <div class="extension-header">
+                                <h3 class="extension-name">JWT Editor</h3>
+                                <div class="extension-rating">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                </div>
+                            </div>
+                            
+                            <p class="extension-desc">
+                                JWT (JSON Web Tokens) आधुनिक वेब एप्लिकेशन में आम हो गए हैं। JWT Editor एक्सटेंशन आपको आसानी से JWT को देखने, डीकोड करने और संपादित करने की अनुमति देता है, जो JWT आधारित ऑथेंटिकेशन सिस्टम के टेस्टिंग में अमूल्य है।
+                            </p>
+                            
+                            <div class="extension-features">
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>JWT के हेडर, पेलोड और सिग्नेचर का विजुअल एडिटर</span>
+                                </div>
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>कस्टम की मैनेजमेंट और रोटेशन</span>
+                                </div>
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>साइनिंग कीज उत्पन्न करने और प्रबंधित करने के लिए इंटरफेस</span>
+                                </div>
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>None अटैक, अल्गोरिदम स्विचिंग जैसे विभिन्न JWT अटैक</span>
+                                </div>
+                            </div>
+                            
+                            <a href="https://portswigger.net/bappstore/26aaa5ded2f74beea19e2ed8345a93dd" class="extension-link" target="_blank">BApp Store में देखें <i class="fas fa-external-link-alt"></i></a>
+                        </div>
+                        
+                        <h2>6. CSRF Scanner - क्रॉस-साइट रिक्वेस्ट फ़ॉर्जरी वल्नरेबिलिटी डिटेक्शन</h2>
+                        
+                        <div class="extension-card">
+                            <div class="extension-header">
+                                <h3 class="extension-name">CSRF Scanner</h3>
+                                <div class="extension-rating">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="far fa-star"></i>
+                                </div>
+                            </div>
+                            
+                            <p class="extension-desc">
+                                CSRF (Cross-Site Request Forgery) अटैक अभी भी कई वेब एप्लिकेशन के लिए एक प्रमुख जोखिम बने हुए हैं। यह एक्सटेंशन आपके स्कैन किए गए वेब एप्लिकेशन में CSRF वल्नरेबिलिटी का पता लगाता है और PoC के लिए एक्सप्लॉइट HTML तैयार करता है।
+                            </p>
+                            
+                            <div class="extension-features">
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>CSRF टोकन वैलिडेशन की कमी का पता लगाता है</span>
+                                </div>
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>सिंगल-क्लिक CSRF PoC HTML जनरेट करता है</span>
+                                </div>
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>Burp प्रॉक्सी और रिपीटर से इंटेग्रेशन</span>
+                                </div>
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>पूर्ण पैरामीटर आधारित एनालिसिस</span>
+                                </div>
+                            </div>
+                            
+                            <a href="https://portswigger.net/bappstore/c9fb79369b56407792a7104e3c4352fb" class="extension-link" target="_blank">BApp Store में देखें <i class="fas fa-external-link-alt"></i></a>
+                        </div>
+                        
+                        <h2>7. Logger++ - एडवांस्ड HTTP ट्रैफिक लॉगिंग और एनालिसिस</h2>
+                        
+                        <div class="extension-card">
+                            <div class="extension-header">
+                                <h3 class="extension-name">Logger++</h3>
+                                <div class="extension-rating">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star-half-alt"></i>
+                                </div>
+                            </div>
+                            
+                            <p class="extension-desc">
+                                HTTP ट्रैफिक को विश्लेषण करना Burp Suite में एक महत्वपूर्ण कार्य है। Logger++ एक्सटेंशन स्टैंडर्ड HTTP लॉगिंग क्षमताओं को बढ़ाता है, जिससे आप रिक्वेस्ट और रिस्पॉन्स को अधिक विस्तार से फ़िल्टर और एनालाइज़ कर सकते हैं।
+                            </p>
+                            
+                            <div class="extension-features">
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>एडवांस्ड फिल्टरिंग ऑप्शन</span>
+                                </div>
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>कस्टम कॉलम सेट करने की क्षमता</span>
+                                </div>
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>रिक्वेस्ट/रिस्पॉन्स का विस्तृत विश्लेषण</span>
+                                </div>
+                                <div class="extension-feature">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>लॉग्स को सेव और एक्सपोर्ट करने की क्षमता</span>
+                                </div>
+                            </div>
+                            
+                            <a href="https://portswigger.net/bappstore/470b7057b86f41c396a97903377f3d81" class="extension-link" target="_blank">BApp Store में देखें <i class="fas fa-external-link-alt"></i></a>
+                        </div>
+                        
+                        <h2>अतिरिक्त उपयोगी एक्सटेंशन</h2>
+                        
+                        <p>
+                            ऊपर सूचीबद्ध मुख्य एक्सटेंशन के अलावा, यहां कुछ अन्य उपयोगी टूल हैं जो आपके पेनटेस्टिंग आर्सेनल में एक अच्छा इज़ाफा कर सकते हैं:
+                        </p>
+                        
+                        <ul>
+                            <li><strong>Param Miner</strong> - छिपे हुए पैरामीटर्स का पता लगाने के लिए</li>
+                            <li><strong>Autorize</strong> - ऑथराइजेशन बग्स पता लगाने के लिए</li>
+                            <li><strong>Software Version Reporter</strong> - सर्वर सॉफ्टवेयर और वर्जन की पहचान के लिए</li>
+                            <li><strong>JS Link Finder</strong> - जावास्क्रिप्ट फाइल्स से दिलचस्प लिंक और एंडपॉइंट निकालने के लिए</li>
+                            <li><strong>Collaborator Everywhere</strong> - आउट-ऑफ-बैंड वल्नरेबिलिटी टेस्टिंग के लिए</li>
+                        </ul>
+                        
+                        <h2>एक्सटेंशन इंस्टॉल करने का तरीका</h2>
+                        
+                        <p>
+                            Burp Suite में एक्सटेंशन इंस्टॉल करना आसान है:
+                        </p>
+                        
+                        <ol>
+                            <li>Burp Suite खोलें और Extender टैब पर जाएं</li>
+                            <li>BApp Store सबटैब पर क्लिक करें</li>
+                            <li>उस एक्सटेंशन को ढूंढें जिसे आप इंस्टॉल करना चाहते हैं (ऊपर की लिंक आपको सीधे वहां ले जाएंगी)</li>
+                            <li>Install बटन पर क्लिक करें</li>
+                            <li>कुछ एक्सटेंशन इंस्टॉलेशन के बाद अतिरिक्त सेटअप की आवश्यकता हो सकती है, इसलिए एक्सटेंशन के दस्तावेज़ों की जांच करें</li>
+                        </ol>
+                        
+                        <div class="code-block">
+                            # Burp Suite Community Edition में कुछ एक्सटेंशन बहुत मेमोरी खा सकते हैं
+                            # जावा हीप मेमोरी बढ़ाने के लिए इस कमांड का उपयोग करें:
+                            
+                            java -jar -Xmx2048m /path/to/burpsuite_community.jar
+                        </div>
+                        
+                        <h2>निष्कर्ष</h2>
+                        
+                        <p>
+                            Burp Suite पहले से ही एक शक्तिशाली टूल है, लेकिन सही एक्सटेंशन के साथ, यह और भी अधिक शक्तिशाली हो जाता है। ये एक्सटेंशन न केवल आपके वर्कफ्लो को सुव्यवस्थित करते हैं बल्कि ऐसी वल्नरेबिलिटी का पता लगाने में भी मदद करते हैं जो आपसे छूट सकती थीं।
+                        </p>
+                        
+                        <p>
+                            याद रखें, हालांकि ये एक्सटेंशन आपके टूलकिट के लिए बेहद मूल्यवान हैं, फिर भी वे मैनुअल टेस्टिंग के विकल्प नहीं हैं। एक्सटेंशन का उपयोग अपने पेनटेस्ट को आगे बढ़ाने के लिए करें, न कि उनके स्थान पर।
+                        </p>
+                        
+                        <p>
+                            क्या आप किसी अन्य उपयोगी Burp एक्सटेंशन का उपयोग करते हैं जिसे हमने सूचीबद्ध नहीं किया है? कमेंट में हमें बताएं!
+                        </p>
+                    </div>
+                    
+                    <div class="article-tags">
+                        <span class="article-tag">Burp Suite</span>
+                        <span class="article-tag">Web Security</span>
+                        <span class="article-tag">Penetration Testing</span>
+                        <span class="article-tag">Security Tools</span>
+                        <span class="article-tag">Extensions</span>
+                    </div>
+                    
+                    <div class="article-navigation">
+                        <a href="blog.html" class="nav-previous"><i class="fas fa-arrow-left"></i> वापस ब्लॉग पर जाएं</a>
+                        <a href="#" class="nav-next">अगला आर्टिकल <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </article>
+            </div>
+        </main>
+
+        <footer>
+            <div class="social-icons">
+                <a href="https://github.com/indianhacker12" class="social-icon" target="_blank" rel="noopener noreferrer"><i class="fab fa-github"></i></a>
+                <a href="https://x.com/YaswantP86897" class="social-icon" target="_blank" rel="noopener noreferrer"><i class="fab fa-twitter"></i></a>
+                <a href="https://www.linkedin.com/in/yaswantpandey" class="social-icon" target="_blank" rel="noopener noreferrer"><i class="fab fa-linkedin"></i></a>
+                <a href="https://www.instagram.com/" class="social-icon" target="_blank" rel="noopener noreferrer"><i class="fab fa-instagram"></i></a>
+            </div>
+            <p>&copy; 2025 Lucifer. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script src="assets/js/matrix.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script>
+        // Audio player functionality
+        const audioPlayer = document.getElementById('background-music');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const volumeSlider = document.getElementById('volume-slider');
+        const audioStatus = document.getElementById('audio-status');
+        
+        // Set initial volume
+        audioPlayer.volume = 0.5;
+        
+        // Play/Pause functionality
+        playPauseBtn.addEventListener('click', () => {
+            if (audioPlayer.paused) {
+                audioPlayer.play();
+                playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                audioStatus.textContent = 'PLAYING';
+            } else {
+                audioPlayer.pause();
+                playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+                audioStatus.textContent = 'PAUSED';
+            }
+        });
+        
+        // Volume control
+        volumeSlider.addEventListener('input', () => {
+            audioPlayer.volume = volumeSlider.value;
+            
+            // Update volume icon based on value
+            const volumeIcon = volumeSlider.parentElement.querySelector('i');
+            if (volumeSlider.value == 0) {
+                volumeIcon.className = 'fas fa-volume-mute';
+            } else if (volumeSlider.value <= 0.5) {
+                volumeIcon.className = 'fas fa-volume-down';
+            } else {
+                volumeIcon.className = 'fas fa-volume-up';
+            }
+        });
+        
+        // Live clock update
+        function updateClock() {
+            const now = new Date();
+            let hours = now.getHours();
+            let minutes = now.getMinutes();
+            let seconds = now.getSeconds();
+            
+            // Add leading zeros
+            hours = hours < 10 ? '0' + hours : hours;
+            minutes = minutes < 10 ? '0' + minutes : minutes;
+            seconds = seconds < 10 ? '0' + seconds : seconds;
+            
+            document.getElementById('current-time').textContent = `${hours}:${minutes}:${seconds}`;
+            setTimeout(updateClock, 1000);
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            updateClock();
+        });
+    </script>
+</body>
+</html> 
