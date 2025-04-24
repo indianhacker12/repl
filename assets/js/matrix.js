@@ -5,7 +5,7 @@
 
 // Wait for DOM to load
 document.addEventListener('DOMContentLoaded', () => {
-    const canvas = document.getElementById('matrix-canvas');
+    const canvas = document.getElementById('matrix');
     const ctx = canvas.getContext('2d');
 
     // Set canvas size to window size
@@ -20,161 +20,68 @@ document.addEventListener('DOMContentLoaded', () => {
     // Resize canvas when window size changes
     window.addEventListener('resize', resizeCanvas);
 
-    // Matrix effect character set (katakana characters + latin characters + numbers + hacking symbols)
-    const katakana = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
-    const latin = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const nums = '0123456789';
-    const hackSymbols = '/*!@#$%^&*()_+{}[]:;<>,.?/~`|\\';
-    const binaryBits = '10';
+    // Characters to use in the matrix rain
+    const chars = 'αβγδεζηθικλμνξοπρστυφχψωABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('');
     
-    // Enhanced character set with more hacking symbols
-    const characters = katakana + latin + nums + hackSymbols + binaryBits;
-
-    // Matrix rain settings
-    const fontSize = 16;
-    const columns = Math.floor(canvas.width / fontSize) + 1;
+    // Setup the columns
+    const fontSize = 14;
+    const columns = Math.floor(canvas.width / fontSize);
+    
+    // Setup the drops
     const drops = [];
-    const speeds = [];
-    const glowIntensities = [];
-    const charTypes = [];
-
-    // Types of streams
-    const STREAM_TYPES = {
-        NORMAL: 0,    // Standard green stream
-        BINARY: 1,    // Just 1s and 0s
-        HIGHLIGHT: 2, // Brighter/white highlight stream
-        FLASH: 3      // Stream that occasionally flashes 
-    };
-
-    // Initialize drops
     for (let i = 0; i < columns; i++) {
-        drops[i] = Math.floor(Math.random() * -100); // Random starting position above canvas
-        speeds[i] = Math.random() * 0.8 + 0.5; // Random speed between 0.5 and 1.3
-        glowIntensities[i] = Math.random(); // Random glow intensity
-        // Assign stream type with weighted probability
-        const typeRand = Math.random();
-        if (typeRand > 0.92) {
-            charTypes[i] = STREAM_TYPES.HIGHLIGHT;
-        } else if (typeRand > 0.83) {
-            charTypes[i] = STREAM_TYPES.FLASH;
-        } else if (typeRand > 0.7) {
-            charTypes[i] = STREAM_TYPES.BINARY;
-        } else {
-            charTypes[i] = STREAM_TYPES.NORMAL;
-        }
+        drops[i] = Math.floor(Math.random() * -canvas.height);
     }
-
-    // Get a character based on the stream type
-    function getCharacter(streamType) {
-        if (streamType === STREAM_TYPES.BINARY) {
-            return binaryBits.charAt(Math.floor(Math.random() * binaryBits.length));
-        } else {
-            return characters.charAt(Math.floor(Math.random() * characters.length));
-        }
-    }
-
-    // Render matrix digital rain
-    function drawMatrix() {
-        // Black background with opacity to create trail effect
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.06)';
+    
+    // Random char generator
+    const getRandomChar = () => chars[Math.floor(Math.random() * chars.length)];
+    
+    // Drawing the matrix
+    function draw() {
+        // Create a semi-transparent black overlay to fade previous frame
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Draw characters
+        
+        // Set text properties
+        ctx.fillStyle = '#0f0';
+        ctx.font = `${fontSize}px monospace`;
+        
+        // Draw each drop
         for (let i = 0; i < drops.length; i++) {
-            // Calculate current position
+            // Draw a random character
+            const text = getRandomChar();
+            
+            // Calculate x position
             const x = i * fontSize;
+            
+            // Calculate y position
             const y = drops[i] * fontSize;
             
-            // Skip if not visible yet
-            if (y < 0) {
-                drops[i] += speeds[i];
-                continue;
-            }
-
-            // Select a random character based on stream type
-            const char = getCharacter(charTypes[i]);
-            
-            // Determine color based on stream type and position
-            const streamType = charTypes[i];
-            const isFirstChar = Math.random() > 0.95;
-            
-            if (streamType === STREAM_TYPES.HIGHLIGHT) {
-                // White/bright highlight streams
-                ctx.fillStyle = 'rgba(220, 255, 220, 0.9)';
-                ctx.shadowColor = '#0F0';
-                ctx.shadowBlur = 15;
-            } else if (streamType === STREAM_TYPES.FLASH && Math.random() > 0.92) {
-                // Occasionally flashing streams
-                ctx.fillStyle = '#FFF';
-                ctx.shadowColor = '#FFF';
-                ctx.shadowBlur = 20;
-            } else if (isFirstChar) {
-                // Leading character in each stream (brighter)
-                ctx.fillStyle = '#FFF';
-                ctx.shadowColor = '#0F0';
+            // Add a slight glow to some characters for effect
+            if (Math.random() > 0.975) {
+                ctx.fillStyle = '#fff'; // Bright white for occasional glow
+                ctx.shadowColor = '#0f0';
                 ctx.shadowBlur = 10;
+                ctx.fillText(text, x, y);
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#0f0'; // Reset to default green
             } else {
-                // Normal matrix green with varying intensity based on position in stream
-                const distance = Math.abs(drops[i] - Math.floor(drops[i]));
-                const greenIntensity = Math.floor(150 + 70 * (1 - distance));
-                
-                // Different shades for different stream types
-                if (streamType === STREAM_TYPES.BINARY) {
-                    ctx.fillStyle = `rgb(0, ${greenIntensity - 30}, 0)`;
-                } else {
-                    ctx.fillStyle = `rgb(0, ${greenIntensity}, 0)`;
-                }
-                
-                // Add occasional glow based on the stream's glow intensity
-                if (Math.random() > 0.98 - glowIntensities[i] * 0.3) {
-                    ctx.shadowColor = '#0F0';
-                    ctx.shadowBlur = 8 * glowIntensities[i];
-                } else {
-                    ctx.shadowBlur = 0;
-                }
+                // Vary the green for a more dynamic effect
+                const green = 150 + Math.floor(Math.random() * 105);
+                ctx.fillStyle = `rgb(0, ${green}, 0)`;
+                ctx.fillText(text, x, y);
             }
-
-            // Draw the character
-            ctx.font = `${fontSize}px monospace`;
-            ctx.fillText(char, x, y);
             
-            // Reset shadow settings
-            ctx.shadowBlur = 0;
-            
-            // After drawing, increment y position based on speed
-            drops[i] += speeds[i];
-            
-            // Randomly reset some drops to top when they go offscreen
-            if (y > canvas.height && Math.random() > 0.99) {
-                drops[i] = -5;
-                
-                // Occasionally change stream type when resetting
-                if (Math.random() > 0.7) {
-                    const typeRand = Math.random();
-                    if (typeRand > 0.92) {
-                        charTypes[i] = STREAM_TYPES.HIGHLIGHT;
-                    } else if (typeRand > 0.83) {
-                        charTypes[i] = STREAM_TYPES.FLASH;
-                    } else if (typeRand > 0.7) {
-                        charTypes[i] = STREAM_TYPES.BINARY;
-                    } else {
-                        charTypes[i] = STREAM_TYPES.NORMAL;
-                    }
-                }
-                
-                // Randomize speed and glow for variety
-                speeds[i] = Math.random() * 0.8 + 0.5;
-                glowIntensities[i] = Math.random();
+            // Reset drop when it reaches bottom or randomly to create varied effect
+            if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                drops[i] = 0;
             }
+            
+            // Move the drop down
+            drops[i]++;
         }
     }
-
-    // Animation loop
-    function animate() {
-        drawMatrix();
-        requestAnimationFrame(animate);
-    }
-
-    // Start animation
-    animate();
+    
+    // Run the animation
+    setInterval(draw, 40);
 }); 

